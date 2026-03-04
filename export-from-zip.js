@@ -3,34 +3,40 @@ const multer = require("multer");
 const AdmZip = require("adm-zip");
 const ExcelJS = require("exceljs");
 const path = require("path");
+const jsQR = require("jsqr");
+const { PNG } = require("pngjs");
 
 const app = express();
 const port = 3000;
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-/**
- * Chuẩn hóa tên file:
- * - Bỏ extension
- * - Bỏ tiền tố ._
- * - Bỏ dấu '
- * - Trim khoảng trắng
- */
 function normalizeFileName(fileName) {
   let name = path.parse(fileName).name;
 
-  // Bỏ tiền tố rác macOS
   if (name.startsWith("._")) {
     name = name.replace("._", "");
   }
 
-  // Bỏ dấu nháy '
-  name = name.replace(/'/g, "");
-
-  // Trim khoảng trắng
-  name = name.trim();
+  name = name.replace(/'/g, "").trim();
 
   return name;
+}
+
+function readQrFromPng(buffer) {
+  return new Promise((resolve) => {
+    new PNG().parse(buffer, (err, data) => {
+      if (err) return resolve(null);
+
+      const qr = jsQR(
+        new Uint8ClampedArray(data.data),
+        data.width,
+        data.height,
+      );
+
+      resolve(qr ? qr.data : null);
+    });
+  });
 }
 
 app.post("/upload-zip", upload.single("file"), async (req, res) => {
@@ -46,8 +52,9 @@ app.post("/upload-zip", upload.single("file"), async (req, res) => {
     const worksheet = workbook.addWorksheet("Data");
 
     worksheet.columns = [
-      { header: "STT", key: "stt", width: 10 },
+      { header: "STT", key: "stt", width: 8 },
       { header: "SERIAL", key: "serial", width: 30 },
+      { header: "LAP", key: "lap", width: 150 },
       { header: "IMAGE", key: "image", width: 25 },
     ];
 
@@ -59,41 +66,40 @@ app.post("/upload-zip", upload.single("file"), async (req, res) => {
 
       const fileName = path.basename(entry.entryName);
 
-      // ❌ Bỏ file rác macOS
-      if (fileName.startsWith("._") || fileName === ".DS_Store") {
-        continue;
-      }
+      if (fileName.startsWith("._") || fileName === ".DS_Store") continue;
 
       const ext = path.extname(fileName).toLowerCase();
 
-      // Chỉ xử lý ảnh
-      if (![".png", ".jpg", ".jpeg"].includes(ext)) {
-        continue;
-      }
+      // 👉 Chỉ xử lý PNG cho ổn định
+      if (ext !== ".png") continue;
 
       const serial = normalizeFileName(fileName);
-
-      // Nếu tên rỗng thì bỏ qua
       if (!serial) continue;
 
-      // Thêm row text
+      const imageBuffer = entry.getData();
+
+      // Đọc QR
+      const lapValue = await readQrFromPng(imageBuffer);
+
+      // Add text row
       worksheet.addRow({
         stt: stt++,
         serial: serial,
+        lap: lapValue || "Không đọc được QR",
       });
 
-      // Thêm ảnh vào Excel
+      // Add image
       const imageId = workbook.addImage({
-        buffer: entry.getData(),
-        extension: ext.replace(".", ""),
+        buffer: imageBuffer,
+        extension: "png",
       });
 
       worksheet.addImage(imageId, {
-        tl: { col: 2, row: rowIndex - 1 },
-        ext: { width: 100, height: 100 },
+        tl: { col: 3, row: rowIndex - 1 }, // IMAGE là cột thứ 4
+        ext: { width: 160, height: 160 },
       });
 
-      worksheet.getRow(rowIndex).height = 80;
+      worksheet.getRow(rowIndex).height = 120;
 
       rowIndex++;
     }
