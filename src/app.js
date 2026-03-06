@@ -3,6 +3,6 @@ const routes = require('./server/routes');
 
 const app = express();
 
-app.use(routes);
+app.use('/', routes);
 
 module.exports = app;
