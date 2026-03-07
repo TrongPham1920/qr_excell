@@ -1,5 +1,7 @@
 const app = require('./src/app');
-const routes = require('./src/server/routes');
+const swagger = require('./swagger');
+
+swagger(app);
 
 const PORT = 3000;
 
