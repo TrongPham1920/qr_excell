@@ -5,7 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "build": "echo 'No build needed'",
+    "start:prod": "pm2 start ecosystem.config.cjs",
+    "stop:prod": "pm2 stop all",
+    "restart:prod": "pm2 restart all"
   },
   "keywords": [],
   "author": "",
@@ -13,12 +17,15 @@
   "description": "",
   "dependencies": {
     "adm-zip": "^0.5.16",
+    "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "jsqr": "^1.4.0",
     "multer": "^2.1.1",
     "path": "^0.12.7",
+    "pm2": "^7.0.3",
     "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "xlsx": "^0.18.5"

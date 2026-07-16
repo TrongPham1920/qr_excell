@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Excel Tool</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; }
+    .header { background: #1a73e8; color: white; padding: 20px 0; text-align: center; }
+    .header h1 { font-size: 24px; font-weight: 500; }
+    .container { max-width: 900px; margin: 0 auto; padding: 30px 20px; }
+    .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 18px; color: #333; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .card p { color: #666; line-height: 1.6; margin-bottom: 12px; }
+    .card ul { margin: 12px 0 12px 20px; color: #666; }
+    .card li { margin-bottom: 8px; line-height: 1.5; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+    th { background: #f8f9fa; font-weight: 500; color: #555; }
+    td { color: #333; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+    .badge-blue { background: #e8f0fe; color: #1a73e8; }
+    .badge-green { background: #e6f4ea; color: #1e8e3e; }
+    .upload-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #1a73e8; background: #f8fbff; }
+    .upload-zone input { display: none; }
+    .upload-zone p { color: #999; margin-bottom: 8px; }
+    .upload-zone .icon { font-size: 36px; margin-bottom: 8px; color: #ccc; }
+    .btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .result { margin-top: 16px; padding: 12px; border-radius: 6px; display: none; }
+    .result.success { background: #e6f4ea; color: #1e8e3e; display: block; }
+    .result.error { background: #fce8e6; color: #d93025; display: block; }
+    .loading { display: none; margin-top: 12px; color: #666; }
+    .loading.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>QR Excel Tool</h1>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h2>File Excel đầu vào</h2>
+      <p>File Excel cần có ít nhất 2 cột: <strong>Serial</strong> và <strong>QR CODE</strong> (hoặc LPA).</p>
+
+      <p style="margin-top:16px;"><strong>Trường hợp 1: Cột QR CODE chứa text LPA</strong></p>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Số Serial</th>
+            <th>QR CODE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>8984048000980456362</td>
+            <td style="font-size:12px;word-break:break-all;">LPA:1$viettelvietnam.validspereachdpplus.com$20260327220718-ICXLII8Z9499W1UUSHSM3K21EWORBGHY242X1OR51-1-Q-WYS</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:16px;"><strong>Trường hợp 2: Cột QR CODE chứa ảnh QR</strong></p>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Số Serial</th>
+            <th>QR CODE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>8984048000980456362</td>
+            <td><em>[Hình ảnh QR code]</em></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Hệ thống tự đọc ảnh QR để lấy giá trị LPA.</p>
+
+      <ul>
+        <li><span class="badge badge-blue">STT</span> Số thứ tự (tùy chọn)</li>
+        <li><span class="badge badge-blue">Số Serial / Serial</span> Số serial (bắt buộc)</li>
+        <li><span class="badge badge-green">QR CODE / LPA</span> Text LPA hoặc ảnh QR (bắt buộc)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Tạo QR Code từ Excel</h2>
+      <p>Upload file Excel theo định dạng trên. Hệ thống sẽ đọc giá trị LPA và tạo QR Code, sau đó xuất file Excel mới.</p>
+
+      <div class="upload-zone" id="uploadZone">
+        <div class="icon">&#128196;</div>
+        <p>Chọn file Excel hoặc kéo thả vào đây</p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+      </div>
+
+      <div id="selectedFile" style="margin-top:12px;color:#333;display:none;">
+        <strong>File: </strong><span id="fileName"></span>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" id="uploadBtn" disabled>Tạo QR &amp; Xuất Excel</button>
+      </div>
+
+      <div class="loading" id="loading">Đang xử lý, vui lòng chờ...</div>
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <script>
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const selectedFile = document.getElementById('selectedFile');
+    const fileName = document.getElementById('fileName');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+        fileInput.files = e.dataTransfer.files;
+        showSelectedFile(file);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        showSelectedFile(e.target.files[0]);
+      }
+    });
+
+    function showSelectedFile(file) {
+      fileName.textContent = file.name;
+      selectedFile.style.display = 'block';
+      uploadBtn.disabled = false;
+      result.className = 'result';
+      result.style.display = 'none';
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      uploadBtn.disabled = true;
+      loading.classList.add('active');
+      result.className = 'result';
+      result.style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/qr/upload-excel', { method: 'POST', body: formData });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || 'Lỗi server');
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'export.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+
+        result.className = 'result success';
+        result.textContent = 'Tạo file Excel thành công! File đã được tải về.';
+        result.style.display = 'block';
+      } catch (err) {
+        result.className = 'result error';
+        result.textContent = err.message;
+        result.style.display = 'block';
+      } finally {
+        uploadBtn.disabled = false;
+        loading.classList.remove('active');
+      }
+    });
+  </script>
+</body>
+</html>
